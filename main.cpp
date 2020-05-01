@@ -395,7 +395,7 @@ int main() {
     int current_player = 0;
     while (player1.army->lifes_sum > 0 && player2.army->lifes_sum > 0) {
         std::cout << std::endl << "@@@@ Now " << current_player + 1
-            << " player`s tern @@@@ \n" << std::endl;
+            << " player`s turn @@@@ \n" << std::endl;
         GameStep(players[current_player], players);
         current_player = 1 - current_player;
     }
