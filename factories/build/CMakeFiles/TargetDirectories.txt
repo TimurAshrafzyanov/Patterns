@@ -1,0 +1,7 @@
+/home/timur/TPHomeTasks/Patterns/factories/build/CMakeFiles/install/strip.dir
+/home/timur/TPHomeTasks/Patterns/factories/build/CMakeFiles/edit_cache.dir
+/home/timur/TPHomeTasks/Patterns/factories/build/CMakeFiles/Factories.dir
+/home/timur/TPHomeTasks/Patterns/factories/build/CMakeFiles/rebuild_cache.dir
+/home/timur/TPHomeTasks/Patterns/factories/build/CMakeFiles/list_install_components.dir
+/home/timur/TPHomeTasks/Patterns/factories/build/CMakeFiles/install/local.dir
+/home/timur/TPHomeTasks/Patterns/factories/build/CMakeFiles/install.dir

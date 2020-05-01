@@ -21,7 +21,8 @@ Commands :
 
 	- go [left / right / up / down]
 
-		Changes players cords ([left / right] changes x cord, [up / down] changes y cord).
+		Changes players cords ([left / right] changes x cord,
+			[up / down] changes y cord).
 		Spends a step.
 
 	- attack 
@@ -42,7 +43,8 @@ Commands :
 
 	    unit [w / a / h] //number_of_line// //number_of_squad//
 
-		Makes new unit in line //number_of_line// in squad //number_of_squad//.
+		Makes new unit in line //number_of_line// 
+			in squad //number_of_squad//.
 		w - Warior, a - Archer, h - Harseman.
 		Spends a step.
 
@@ -51,12 +53,15 @@ Commands :
 		Units recharges, player gets *2 coins.
 		Spends a step.
 
-	- move //number_of_line_from// //number_of_squad_from// //number_of_unit//
+	- move //number_of_line_from// //number_of_squad_from// 
+	    //number_of_unit//
 	    //number_of_line_to// //number_of_squad_to//
 
 		Moves unit //number_of_unit//
-		from line //number_of_line_from//, squad //number_of_squad_from// 
-		to line //number_of_line_to//, squad //number_of_squad_to//.
+		from line //number_of_line_from//, 
+			squad //number_of_squad_from// 
+		to line //number_of_line_to//, 
+			squad //number_of_squad_to//.
 		Spends a step.
 
 	- progress

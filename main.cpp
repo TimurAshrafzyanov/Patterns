@@ -5,261 +5,15 @@
 #include <set>
 #include <sstream>
 #include <fstream>
-#include "variables.h"
+#include <stdio.h>
+#include "source/variables.h"
+
+#include "factories/abstract_factory.h"
+#include "factories/english_factory.h"
+#include "factories/french_factory.h"
+#include "classes/army.h"
 
 
-class Squad;
-class Army;
-
-class Unit {
-public:
-    int health;
-    int strength;
-    Squad *parent_squad = nullptr;
-
-    virtual void Attack(Army *enemy) const;
-    virtual void  Recharge();
-
-    virtual void GetInjured(int count_of_lifes, size_t self_position);
-    void RemoveFromArmy();
-    void SetParent(Squad *squad);
-};
-
-
-class Squad {
-public:
-    std::vector<Unit *> units;
-    Army *parent_army;
-
-    template<typename... Units>
-    Squad(Army *parent, Units... units) {
-        parent_army = parent;
-        for (auto p : std::initializer_list<Unit *>{units...}) {
-            this->units.push_back(p);
-        }
-    }
-
-    void Attack(Army *) const;
-    void Recharge();
-};
-
-void Squad::Attack(Army *enemy) const {
-    for (auto unit : units) {
-        unit->Attack(enemy);
-    }
-}
-void Squad::Recharge() {
-    for (auto unit : units) {
-        unit->Recharge();
-    }
-}
-
-
-class Army {
-public:
-    std::vector< std::vector<Squad *> > lines;
-    long long lifes_sum = 0;
-
-    template<typename... Squads>
-    Army(Squads... squads) {
-        lines.emplace_back(0);
-        for (auto p : std::initializer_list<Squad *>{squads...}) {
-            this->lines[0].push_back(p);
-        }
-    }
-
-    void AddUnit(Unit *unit, size_t line_number, size_t squad_number);
-    void AddSquad(size_t line_number);
-    void AddLine();
-    void Attack(Army *);
-    void Recharge();
-};
-
-void Army::AddUnit(Unit *unit, size_t line_number, size_t squad_number) {
-    lines[line_number][squad_number]->units.push_back(unit);
-    unit->SetParent(lines[line_number][squad_number]);
-    lifes_sum += unit->health;
-}
-void Army::AddSquad(size_t line_number) {
-    lines[line_number].emplace_back(new Squad(this));
-}
-void Army::AddLine() {
-    lines.emplace_back(0);
-}
-void Army::Attack(Army *enemy) {
-    for (size_t j = 0; j < lines.size(); ++j) {
-        for (int i = static_cast<int>(lines[j].size()) - 1; i >= 0; --i) {
-            if (!lines[j][i]->units.empty()) lines[j][i]->Attack(enemy);
-            else lines[j].erase(lines[j].begin() + i);
-        }
-    }
-}
-void Army::Recharge() {
-    for (const auto& line : lines) {
-        for (auto squad : line) {
-            squad->Recharge();
-        }
-    }
-}
-
-
-void Unit::GetInjured(int count_of_lifes, size_t self_position) {
-    health -= count_of_lifes;
-    parent_squad->parent_army->lifes_sum -= count_of_lifes;
-    if (health <= 0) {
-        parent_squad->parent_army->lifes_sum -= health;
-        parent_squad->units.erase(parent_squad->units.begin() + self_position);
-        delete(this);
-    }
-}
-void Unit::Attack(Army *enemy) const {
-    size_t direct_squad = rand() % enemy->lines[0].size();
-    if (enemy->lines[0][direct_squad]->units.size() != 0) {
-        size_t direct_unit = rand() % enemy->lines[0][direct_squad]->units.size();
-        enemy->lines[0][direct_squad]->units[direct_unit]->GetInjured(strength, direct_unit);
-    }
-}
-void Unit::Recharge() {}
-void Unit::RemoveFromArmy() {
-    if (parent_squad != nullptr) {
-        size_t i = 0;
-        while (parent_squad->units[i] != this) ++i;
-        parent_squad->units.erase(parent_squad->units.begin() + i);
-        parent_squad->parent_army->lifes_sum -= health;
-
-        if (parent_squad->units.empty()) {
-            Army *army = parent_squad->parent_army;
-            i = 0;
-            size_t j = 0;
-            while (army->lines[i][j] != parent_squad) {
-                if (j == army->lines[i].size() - 1) {
-                    ++i;
-                    j = 0;
-                } else ++j;
-            }
-            army->lines[i].erase(army->lines[i].begin() + j);
-            delete(parent_squad);
-        }
-
-        parent_squad = nullptr;
-    }
-}
-void Unit::SetParent(Squad *squad) {
-    parent_squad = squad;
-}
-
-
-
-
-class AbstractWarrior : public Unit {
-public:
-    static const int price = WARRIOR_PRICE;
-    int defense = 0;
-    int defence_speed;
-
-    void Recharge() override;
-};
-void AbstractWarrior::Recharge() {
-    defense += defence_speed;
-}
-
-class EnglishWarrior : public AbstractWarrior {
-public:
-    explicit EnglishWarrior() {
-        health = ENG_WARRIOR_HEALTH;
-        strength = ENG_WARRIOR_STRENGTH;
-        defence_speed = ENG_WARRIOR_DEF_SPEED;
-    }
-};
-class FrenchWarrior : public AbstractWarrior {
-public:
-    explicit FrenchWarrior() {
-        health = FR_WARRIOR_HEALTH;
-        strength = FR_WARRIOR_STRENGTH;
-        defence_speed = FR_WARRIOR_DEF_SPEED;
-    }
-};
-
-class AbstractArcher : public Unit {
-public:
-    static const int price = ARCHER_PRICE;
-    int long_dist_strength;
-
-    //void Attack(Army *) const override;
-};
-//void AbstractArcher::Attack(Army *) const {}
-
-class EnglishArcher : public AbstractArcher {
-public:
-    explicit EnglishArcher() {
-        health = ENG_ARCHER_HEALTH;
-        long_dist_strength = ENG_ARCHER_LONG_STR;
-        strength = ENG_ARCHER_SHORT_STR;
-    }
-};
-class FrenchArcher : public AbstractArcher {
-public:
-    explicit FrenchArcher() {
-        health = FR_ARCHER_HEALTH;
-        long_dist_strength = FR_ARCHER_LONG_STR;
-        strength = FR_ARCHER_SHORT_STR;
-    }
-};
-
-class AbstractHorseman : public Unit {
-public:
-    static const int price = HORSEMAN_PRICE;
-};
-
-class EnglishHorseman : public AbstractHorseman {
-public:
-    explicit EnglishHorseman() {
-        health = ENG_HORSEMAN_HEALTH;
-        strength = ENG_HORSEMAN_STRENGTH;
-    }
-};
-class FrenchHorseman : public AbstractHorseman {
-public:
-    explicit FrenchHorseman() {
-        health = FR_HORSEMAN_HEALTH;
-        strength = FR_HORSEMAN_STRENGTH;
-    }
-};
-
-
-
-class AbstractFactory {
-public:
-    virtual AbstractWarrior* CreateWarrior() const = 0;
-    virtual AbstractArcher* CreateArcher() const = 0;
-    virtual AbstractHorseman* CreateHorseman() const = 0;
-};
-
-class EnglishFactory : public AbstractFactory{
-public:
-    AbstractWarrior* CreateWarrior() const override {
-        return new EnglishWarrior();
-    }
-    AbstractArcher* CreateArcher() const override {
-        return new EnglishArcher();
-    }
-    AbstractHorseman* CreateHorseman() const override {
-        return new EnglishHorseman();
-    }
-};
-
-class FrenchFactory : public AbstractFactory{
-public:
-    AbstractWarrior* CreateWarrior() const override {
-        return new FrenchWarrior();
-    }
-    AbstractArcher* CreateArcher() const override {
-        return new FrenchArcher();
-    }
-    AbstractHorseman* CreateHorseman() const override {
-        return new FrenchHorseman();
-    }
-};
 
 AbstractFactory* CreateFactory() {
     std::string your_fraction;
@@ -277,9 +31,6 @@ AbstractFactory* CreateFactory() {
         std::cin >> your_fraction;
     }
 }
-
-
-
 
 
 class Player{
@@ -581,7 +332,7 @@ void GameStep(Player *player, std::vector<Player *> &players) {
         if (command == "help") {
             std::string line;
             std::ifstream fs;
-            fs.open("help/help.txt");
+            fs.open("../source/help.txt");
             while (getline(fs,line)) {
                 std::cout << line << std::endl;
             }
