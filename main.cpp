@@ -4,9 +4,9 @@
 #include <typeinfo>
 #include <set>
 #include <sstream>
+#include <fstream>
 #include "variables.h"
 
-int count_of_coins = 1000000;
 
 class Squad;
 class Army;
@@ -21,11 +21,9 @@ public:
     virtual void  Recharge();
 
     virtual void GetInjured(int count_of_lifes, size_t self_position);
+    void RemoveFromArmy();
     void SetParent(Squad *squad);
 };
-void Unit::SetParent(Squad *squad) {
-    parent_squad = squad;
-}
 
 
 class Squad {
@@ -122,6 +120,33 @@ void Unit::Attack(Army *enemy) const {
     }
 }
 void Unit::Recharge() {}
+void Unit::RemoveFromArmy() {
+    if (parent_squad != nullptr) {
+        size_t i = 0;
+        while (parent_squad->units[i] != this) ++i;
+        parent_squad->units.erase(parent_squad->units.begin() + i);
+        parent_squad->parent_army->lifes_sum -= health;
+
+        if (parent_squad->units.empty()) {
+            Army *army = parent_squad->parent_army;
+            i = 0;
+            size_t j = 0;
+            while (army->lines[i][j] != parent_squad) {
+                if (j == army->lines[i].size() - 1) {
+                    ++i;
+                    j = 0;
+                } else ++j;
+            }
+            army->lines[i].erase(army->lines[i].begin() + j);
+            delete(parent_squad);
+        }
+
+        parent_squad = nullptr;
+    }
+}
+void Unit::SetParent(Squad *squad) {
+    parent_squad = squad;
+}
 
 
 
@@ -259,7 +284,6 @@ AbstractFactory* CreateFactory() {
 
 class Player{
 public:
-    int current_number;
     int x_cord;
     int y_cord;
     AbstractFactory *factory;
@@ -267,8 +291,10 @@ public:
     int count_of_coins = 0;
     int coins_speed = START_COINS_SPEED;
 
-    Player(int number, int x, int y) {
-        current_number = number;
+    int steps_to_progress;
+    bool last_step_attacked = false;
+
+    Player(int number, int x, int y) : steps_to_progress(0) {
         x_cord = x;
         y_cord = y;
         std::cout << "@@@@ Creating " << number << " player`s";
@@ -280,13 +306,14 @@ public:
         army->AddUnit(unit, 0, 0);
     }
 
-    void PrintMap() const;
+    void PrintMap(const std::vector<Player *> &players) const;
     void PrintArmy() const;
     bool BuyUnit(char type, size_t line_number, size_t squad_number);
-    void Update();
-    bool Move(const std::string& direction);
-    bool Attack();
+    void Update(bool attacked);
+    bool Move(const std::string& direction, std::vector<Player *> &players);
+    bool Attack(std::vector<Player *> &players);
     void Recharge();
+    void Progress(bool &step);
 };
 
 bool Player::BuyUnit(char type, size_t line_number, size_t squad_number) {
@@ -318,8 +345,10 @@ bool Player::BuyUnit(char type, size_t line_number, size_t squad_number) {
     return true;
 }
 
-void Player::Update() {
+void Player::Update(bool attacked) {
     count_of_coins += coins_speed;
+    if (steps_to_progress > 0) steps_to_progress -= 1;
+    last_step_attacked = attacked;
 
     for (int i = static_cast<int>(army->lines.size()) - 1; i >= 0; --i) {
         std::vector<Squad *> line = army->lines[i];
@@ -330,10 +359,7 @@ void Player::Update() {
     }
 }
 
-
-std::vector<Player *> players;
-
-void Player::PrintMap() const {
+void Player::PrintMap(const std::vector<Player *> &players) const {
     std::vector<std::string> map(5, "_____   _____   _____   _____   _____");
     std::vector<char> symbols = {'1', '2'};
     for (size_t i = 0; i < players.size(); ++i) {
@@ -362,7 +388,7 @@ void Player::PrintArmy() const {
     }
 }
 
-bool Player::Move(const std::string& direction) {
+bool Player::Move(const std::string& direction, std::vector<Player *> &players) {
     bool is_correct = true;
     int new_x = x_cord;
     int new_y = y_cord;
@@ -398,7 +424,7 @@ bool Player::Move(const std::string& direction) {
     return is_correct;
 }
 
-bool Player::Attack() {
+bool Player::Attack(std::vector<Player *> &players) {
     Player *enemy;
     if (players[0] == this) enemy = players[1];
     else enemy = players[0];
@@ -416,9 +442,32 @@ void Player::Recharge() {
     count_of_coins += coins_speed;
 }
 
+void Player::Progress(bool &step) {
+    if (last_step_attacked || steps_to_progress > 0) {
+        std::cout << "You can`t progress now" << std::endl;
+        return;
+    }
+    coins_speed += START_COINS_SPEED;
+    step = false;
+}
 
 
-void NewCommand(Player *player, bool &step) {
+
+void CommandGo(Player *player, bool &step, std::vector<Player *> &players) {
+    std::string command;
+    std::cin >> command;
+    std::set<std::string> str;
+    str.insert("left");
+    str.insert("right");
+    str.insert("up");
+    str.insert("down");
+    if (!str.count(command))
+        std::cout << "Wrong direction" << std::endl;
+    else if (player->Move(command, players)) step = false;
+}
+
+
+void CommandNew(Player *player, bool &step) {
     std::string command;
     std::cin >> command;
     if (command == "line") {
@@ -452,23 +501,22 @@ void NewCommand(Player *player, bool &step) {
         }
         char type = command[0];
 
-        std::cin >> command;
-        std::stringstream s;
-        s << command;
-        long line;
-        s >> line;
-        if (!s || line >= player->army->lines.size()) {
-            std::cout << "Wrong line`s number" << std::endl;
-            return;
+        std::vector<int> cords(2);
+        for (size_t i = 0; i < 2; ++i) {
+            std::cin >> command;
+            std::stringstream s;
+            s << command;
+            s >> cords[i];
+            if (!s) {
+                std::cout << "Wrong format" << std::endl;
+                return;
+            }
         }
+        int line = cords[0];
+        int squad = cords[1];
 
-        std::cin >> command;
-        s.clear();
-        s << command;
-        long squad;
-        s >> squad;
-        if (!s || squad >= player->army->lines[line].size()) {
-            std::cout << "Wrong squad`s number" << std::endl;
+        if (line >= player->army->lines.size() || squad >= player->army->lines[line].size()) {
+            std::cout << "Wrong line`s or squad`s number" << std::endl;
             return;
         }
         if (player->BuyUnit(type, line, squad)) {
@@ -480,14 +528,50 @@ void NewCommand(Player *player, bool &step) {
     std::cout << "Wrong command with new" << std::endl;
 }
 
+void CommandMove(Player *player, bool &step) {
+    std::vector<int> cords(5);
+    std::string command;
+    for(size_t i = 0; i < 5; ++i) {
+        std::cin >> command;
+        std::stringstream s;
+        s << command;
+        long number;
+        s >> number;
+        if (!s) {
+            std::cout << "Wrong format" << std::endl;
+            return;
+        }
+        else cords[i] = number;
+    }
+    if (cords[0] >= player->army->lines.size()
+        || cords[3] >= player->army->lines.size()) {
+        std::cout << "Wrong line`s number";
+        return;
+    }
+    if (cords[1] >= player->army->lines[cords[0]].size()
+        || cords[4] >= player->army->lines[cords[1]].size()) {
+        std::cout << "Wrong squad`s number";
+        return;
+    }
+    if (cords[2] >= player->army->lines[cords[0]][cords[1]]->units.size()) {
+        std::cout << "Wrong unit`s number";
+        return;
+    }
+    Unit *unit = player->army->lines[cords[0]][cords[1]]->units[cords[2]];
+    unit->RemoveFromArmy();
+    player->army->AddUnit(unit, cords[3], cords[4]);
+    step = false;
+}
 
-void GameStep(Player *player) {
+
+void GameStep(Player *player, std::vector<Player *> &players) {
     bool step = true;
+    bool attacked = false;
     std::string command;
     while (step) {
         std::cin >> command;
         if (command == "map") {
-            player->PrintMap();
+            player->PrintMap(players);
             continue;
         }
         if (command == "army") {
@@ -495,23 +579,29 @@ void GameStep(Player *player) {
             continue;
         }
         if (command == "help") {
-            "";
+            std::string line;
+            std::ifstream fs;
+            fs.open("help/help.txt");
+            while (getline(fs,line)) {
+                std::cout << line << std::endl;
+            }
+            fs.close();
+            continue;
+        }
+        if (command == "balance") {
+            std::cout << "Your balance is "
+                << player->count_of_coins << " coins" << std::endl;
             continue;
         }
         if (command == "go") {
-            std::cin >> command;
-            std::set<std::string> str;
-            str.insert("left");
-            str.insert("right");
-            str.insert("up");
-            str.insert("down");
-            if (!str.count(command))
-                std::cout << "Wrong direction" << std::endl;
-            else if (player->Move(command)) step = false;
+            CommandGo(player, step, players);
             continue;
         }
         if (command == "attack") {
-            if (player->Attack()) step = false;
+            if (player->Attack(players)) {
+                attacked = true;
+                step = false;
+            }
             continue;
         }
         if (command == "recharge") {
@@ -520,24 +610,25 @@ void GameStep(Player *player) {
             continue;
         }
         if (command == "new") {
-            NewCommand(player, step);
+            CommandNew(player, step);
             continue;
         }
         if (command == "move") {
+            CommandMove(player, step);
             continue;
         }
-        if (command == "balance") {
-            std::cout << "Your balance is " <<
-                player->count_of_coins << " coins" << std::endl;
+        if (command == "progress") {
+            player->Progress(step);
             continue;
         }
         std::cout << "Wrong command" << std::endl;
     }
-    player->Update();
+    player->Update(attacked);
 }
 
 
 int main() {
+    std::vector<Player *> players;
     Player player1(1, 0, 0);
     players.push_back(&player1);
     Player player2(2, 0, 1);
@@ -545,16 +636,17 @@ int main() {
 
     int current_player = 0;
     while (player1.army->lifes_sum > 0 && player2.army->lifes_sum > 0) {
-        std::cout << std::endl << "@@@@ Now " << current_player + 1;
-        std::cout << " player`s tern @@@@ \n" << std::endl;
-        GameStep(players[current_player]);
+        std::cout << std::endl << "@@@@ Now " << current_player + 1
+            << " player`s tern @@@@ \n" << std::endl;
+        GameStep(players[current_player], players);
         current_player = 1 - current_player;
     }
 
     if (player1.army->lifes_sum > 0) current_player = 1;
     else current_player = 2;
-    std::cout << std::endl << "@@@@ " << current_player << " player won @@@@";
-    std::cout << std::endl << "His ";
+    std::cout << std::endl << "@@@@ " << current_player
+        << " player won @@@@" << std::endl << "His ";
     players[current_player - 1]->PrintArmy();
+
     return 0;
 }
