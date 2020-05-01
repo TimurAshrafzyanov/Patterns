@@ -372,6 +372,12 @@ void GameStep(Player *player, std::vector<Player *> &players) {
             player->Progress(step);
             continue;
         }
+	if (command == "prices") {
+	    std::cout << "\t Warrior : " << WARRIOR_PRICE << std::endl;
+	    std::cout << "\t Archer : " << ARCHER_PRICE << std::endl;
+	    std::cout << "\t Horseman : " << HORSEMAN_PRICE << std::endl;
+	    continue;
+	}
         std::cout << "Wrong command" << std::endl;
     }
     player->Update(attacked);
@@ -382,7 +388,7 @@ int main() {
     std::vector<Player *> players;
     Player player1(1, 0, 0);
     players.push_back(&player1);
-    Player player2(2, 0, 1);
+    Player player2(2, 4, 4);
     players.push_back(&player2);
 
     int current_player = 0;

@@ -7,8 +7,8 @@
 
 int START_COINS_SPEED = 1;
 
-const int WARRIOR_PRICE = 10;
-const int ARCHER_PRICE = 7;
-const int HORSEMAN_PRICE = 7;
+const int WARRIOR_PRICE = 5;
+const int ARCHER_PRICE = 13;
+const int HORSEMAN_PRICE = 10;
 
 #endif //GAME_1_VARIABLES_H
