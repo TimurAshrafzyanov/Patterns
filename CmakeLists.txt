@@ -5,6 +5,6 @@ project(Game)
 set(CMAKE_BINARY_DIR ${CMAKE_SOURCE_DIR}/bin)
 set(EXECUTABLE_OUTPUT_PATH ${CMAKE_BINARY_DIR})
 
-set(MAIN_SOURCE ${CMAKE_SOURCE_DIR}/main.cpp)
+set(MAIN_SOURCE ${CMAKE_SOURCE_DIR}/main.cpp ${CMAKE_SOURCE_DIR}/variables.h)
 
 add_executable(Game ${MAIN_SOURCE})
