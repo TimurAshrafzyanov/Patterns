@@ -199,6 +199,7 @@ void Player::Progress(bool &step) {
         return;
     }
     coins_speed += START_COINS_SPEED;
+    steps_to_progress = 5;
     step = false;
 }
 
