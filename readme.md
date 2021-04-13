@@ -1,6 +1,6 @@
 # Patterns
 
-Файл ArchitectureDiagram.drawio - диалграмма с архитектурой проекта
+Файл ArchitectureDiagram.drawio - диаграмма с архитектурой проекта
 Открывать с сайта https://app.diagrams.net/
 
 Запуск проекта:
