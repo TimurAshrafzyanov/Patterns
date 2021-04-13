@@ -4,11 +4,13 @@
 Открывать с сайта https://app.diagrams.net/
 
 Запуск проекта:
+```
 mkdir build
 cd build
 cmake ..
 make
 ../bin/Game
+```
 
 Список конманд:
 Commands :
